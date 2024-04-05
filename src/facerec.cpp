@@ -8,7 +8,6 @@
 #include <fstream>
 #include <filesystem>
 
-// g++ -std=c++17 facerec.cpp -lopencv_face -lopencv_core -lopencv_imgcodecs
 int g_redness = 255;
 
 int main(int argc, char *argv[])
@@ -41,6 +40,8 @@ int main(int argc, char *argv[])
 
   //new - this has been taken from 04_capture_show_video.cpp from the open cv lab
   cv::Mat frame;
+  cv::Mat grey_scale;
+  cv::Mat black_white;
   double fps = 30;
   const char win_name[] = "Live Video...";
 
@@ -65,22 +66,18 @@ int main(int argc, char *argv[])
   cv::Point center(320, 240); //centre of screen
   cv::Point p1 (274, 296); //bottom left
   cv::Point p2 (366, 184); // top right
-  int i{ 0 };
+  cv::Mat temp;
+  cv::Mat crop;
 
   while (1) {
-      vid_in >> frame;
       
-      cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY); //makes webcam greyscale
-
-      cv::Rect box; //creates rectangle object
-      box.x = 228, box.y = 128, box.width = 92*2, box.height = 112*2; //defines box params
-      cv::Mat srcBox = frame(box); //create mat based on box
-      cv::Canny(srcBox, srcBox, 120, 150); //canny effect inside box
-
-      //effects
-      /*cv::GaussianBlur(srcBox, srcBox, cv::Size(13, 13), 5, 5); //creates Gaussian Blur only inside box
-      cv::Mat corners;
-      cv::goodFeaturesToTrack(frame, corners, 10, 0.01, 50); //not sure this works yet */
+      vid_in >> frame;
+      vid_in >> temp; //temp is used to have unfiltered view
+      
+      cv::Point topLeft = cv::Point(228, 128);
+      cv::Point bottomRight = cv::Point(412, 352);
+      cv::Rect roi = cv::Rect(topLeft, bottomRight); //creates rectangle object
+      cv::GaussianBlur(frame(roi), frame(roi), cv::Size(51, 51), 0); //creates Gaussian Blur only inside box
 
       imshow(win_name, frame);
       
@@ -88,12 +85,22 @@ int main(int argc, char *argv[])
       if (code == 27) // escape. See http://www.asciitable.com/
           break;
       else if (code == 32) { // space bar
-          cv::Mat crop = frame(box); //crops image to just inside box
-          cv::imwrite(std::string("../out") + std::to_string(i++) + ".png", crop); //saves file as "out(integer).png"
+          cv::Mat crop = temp(roi); //crops image to just inside box
+          cv::resize(crop, crop, cv::Size(92, 112), cv::INTER_LINEAR); //sca
+          cv::cvtColor(crop, crop, cv::COLOR_BGR2GRAY);
+          cv::imwrite(std::string("../out")+ ".pgm", crop); //saves file as "out.png"
+          cv::Mat testSample = cv::imread(std::string("../out") + ".pgm", cv::IMREAD_GRAYSCALE); //reads output image
+          int predictedLabel = model->predict(testSample); //predicts label of face
+          std::cout << "\nPredicted class = " << predictedLabel << '\n';
       }
+
   }
 
   vid_in.release();
+
+  cv::Mat testSample = cv::imread(std::string("../out") + ".pgm", cv::IMREAD_GRAYSCALE); //reads output image
+  int predictedLabel = model->predict(testSample); //predicts label of face
+  std::cout << "\nPredicted class = " << predictedLabel << '\n';
 
   return 0;
 }
