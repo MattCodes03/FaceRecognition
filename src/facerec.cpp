@@ -8,7 +8,27 @@
 #include <fstream>
 #include <filesystem>
 
-int g_redness = 255;
+void CallBackFunc(int event, int x, int y, int flags, void* userdata)
+{
+    if (event == cv::EVENT_LBUTTONDOWN)
+    {
+        std::cout << "Left button of the mouse is clicked - position (" << x << ", " << y << ")" << std::endl;
+    }
+    else if (event == cv::EVENT_RBUTTONDOWN)
+    {
+        std::cout << "Right button of the mouse is clicked - position (" << x << ", " << y << ")" << std::endl;
+    }
+    else if (event == cv::EVENT_MBUTTONDOWN)
+    {
+        std::cout << "Middle button of the mouse is clicked - position (" << x << ", " << y << ")" << std::endl;
+    }
+    else if (event == cv::EVENT_MOUSEMOVE)
+    {
+        std::cout << "Mouse move over the window - position (" << x << ", " << y << ")" << std::endl;
+
+    }
+    
+}
 
 int main(int argc, char *argv[])
 {
@@ -33,10 +53,6 @@ int main(int argc, char *argv[])
   std::cout << " training...\n";
   cv::Ptr<cv::face::BasicFaceRecognizer> model = cv::face::EigenFaceRecognizer::create();
   model->train(images, labels);
-
-  /*
-  int predictedLabel = model->predict(testSample);
-  std::cout << "\nPredicted class = " << predictedLabel << '\n';*/
 
   //new - this has been taken from 04_capture_show_video.cpp from the open cv lab
   cv::Mat frame;
@@ -64,8 +80,8 @@ int main(int argc, char *argv[])
   
 
   cv::Point center(320, 240); //centre of screen
-  cv::Point p1 (274, 296); //bottom left
-  cv::Point p2 (366, 184); // top right
+  cv::Point topLeft = cv::Point(228, 128);
+  cv::Point bottomRight = cv::Point(412, 352);
   cv::Mat temp;
   cv::Mat crop;
 
@@ -73,11 +89,13 @@ int main(int argc, char *argv[])
       
       vid_in >> frame;
       vid_in >> temp; //temp is used to have unfiltered view
-      
-      cv::Point topLeft = cv::Point(228, 128);
-      cv::Point bottomRight = cv::Point(412, 352);
+
       cv::Rect roi = cv::Rect(topLeft, bottomRight); //creates rectangle object
       cv::GaussianBlur(frame(roi), frame(roi), cv::Size(51, 51), 0); //creates Gaussian Blur only inside box
+
+      cv::Point cursorPos;
+      
+      cv::setMouseCallback(win_name, CallBackFunc, NULL);
 
       imshow(win_name, frame);
       
@@ -93,14 +111,9 @@ int main(int argc, char *argv[])
           int predictedLabel = model->predict(testSample); //predicts label of face
           std::cout << "\nPredicted class = " << predictedLabel << '\n';
       }
-
   }
 
   vid_in.release();
-
-  cv::Mat testSample = cv::imread(std::string("../out") + ".pgm", cv::IMREAD_GRAYSCALE); //reads output image
-  int predictedLabel = model->predict(testSample); //predicts label of face
-  std::cout << "\nPredicted class = " << predictedLabel << '\n';
 
   return 0;
 }
