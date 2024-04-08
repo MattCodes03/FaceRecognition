@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
         std::string str = entry.path().parent_path().stem().string(); // s26 s27 etc.
         int label = atoi(str.c_str() + 1); // s1 -> 1 (pointer arithmetic)
         images.push_back(cv::imread(entry.path().string().c_str(), cv::IMREAD_GRAYSCALE));
-        labels.push_back(label);
+	labels.push_back(label);
       }
     }
   }
@@ -91,6 +91,7 @@ int main(int argc, char *argv[])
       vid_in >> temp; //temp is used to have unfiltered view
 
       cv::Rect roi = cv::Rect(topLeft, bottomRight); //creates rectangle object
+      cv::rectangle(frame, roi, cv::Scalar(255, 0, 0), 2);// Draw border aroud the rect object, this is done so the users can see what they are moving
       cv::GaussianBlur(frame(roi), frame(roi), cv::Size(51, 51), 0); //creates Gaussian Blur only inside box
 
       cv::Point cursorPos;
