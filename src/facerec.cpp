@@ -20,26 +20,23 @@ void CheckBoundaries(cv::Mat& frame)
   if (roi.x < 0)
   {
     roi.x = 0;
-    dragging = false;
   }
   
   if (roi.y < 0)
   {
     roi.y = 0;
-    dragging = false;
+   
   }
   
   if (roi.x + roi.width > frame.cols)
   {
       roi.x = frame.cols - roi.width;
-      dragging = false;
   }
   
   if (roi.y + roi.height > frame.rows)
-    {
+  {
       roi.y = frame.rows - roi.height;
-      dragging = false;
-    }
+  }
 }
 
 void DragRect(int event, int x, int y, int flags, void* userdata)
