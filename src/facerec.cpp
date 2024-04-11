@@ -8,26 +8,66 @@
 #include <fstream>
 #include <filesystem>
 
-void CallBackFunc(int event, int x, int y, int flags, void* userdata)
+// Global variable to determine if mouse is dragging
+bool dragging = false;
+
+// Region of interest on the frame, this is where the facial recgonition takes place. Global scope so it can be used by the DragRect function
+cv::Rect roi(228, 128, 184, 224);
+
+// Function for checking if the ROI is still within the boundaries of the frame. Crated this to try and keep the code as readable as possible.
+void CheckBoundaries(cv::Mat& frame)
 {
+  if (roi.x < 0)
+  {
+    roi.x = 0;
+    dragging = false;
+  }
+  
+  if (roi.y < 0)
+  {
+    roi.y = 0;
+    dragging = false;
+  }
+  
+  if (roi.x + roi.width > frame.cols)
+  {
+      roi.x = frame.cols - roi.width;
+      dragging = false;
+  }
+  
+  if (roi.y + roi.height > frame.rows)
+    {
+      roi.y = frame.rows - roi.height;
+      dragging = false;
+    }
+}
+
+void DragRect(int event, int x, int y, int flags, void* userdata)
+{
+
+  // Static cast the userdata to a cv::Mat* so we can check the bounds of the frame
+  cv::Mat* frame = static_cast<cv::Mat*>(userdata);
+  
+   // Used to detremine wheter or not th euser is moving the mous whilst holding left button down on rectangle
     if (event == cv::EVENT_LBUTTONDOWN)
     {
-        std::cout << "Left button of the mouse is clicked - position (" << x << ", " << y << ")" << std::endl;
-    }
-    else if (event == cv::EVENT_RBUTTONDOWN)
+      if(roi.contains(cv::Point(x, y)))
+      {
+	dragging = true;
+      }
+      
+    }else if (event == cv::EVENT_MOUSEMOVE && dragging)
     {
-        std::cout << "Right button of the mouse is clicked - position (" << x << ", " << y << ")" << std::endl;
-    }
-    else if (event == cv::EVENT_MBUTTONDOWN)
-    {
-        std::cout << "Middle button of the mouse is clicked - position (" << x << ", " << y << ")" << std::endl;
-    }
-    else if (event == cv::EVENT_MOUSEMOVE)
-    {
-        std::cout << "Mouse move over the window - position (" << x << ", " << y << ")" << std::endl;
+      roi.x = x - roi.width /2;
+      roi.y = y - roi.height /2;
 
+      // Ensure the ROI stays within the frame boundaries
+      CheckBoundaries(*frame);
+        
+    }else if (event == cv::EVENT_LBUTTONUP)
+    {
+      dragging = false;
     }
-    
 }
 
 int main(int argc, char *argv[])
@@ -73,38 +113,43 @@ int main(int argc, char *argv[])
   else
   {
       std::cerr << "error: Camera 0 could not be opened for capture.\n";
+      vid_in.release();
       return -1;
   }
 
   cv::namedWindow(win_name);
-  
+
+  cv::setMouseCallback(win_name, DragRect, &frame);
 
   cv::Point center(320, 240); //centre of screen
-  cv::Point topLeft = cv::Point(228, 128);
-  cv::Point bottomRight = cv::Point(412, 352);
   cv::Mat temp;
   cv::Mat crop;
 
-  while (1) {
+  while (true)
+  {
       
       vid_in >> frame;
       vid_in >> temp; //temp is used to have unfiltered view
-
-      cv::Rect roi = cv::Rect(topLeft, bottomRight); //creates rectangle object
-      cv::rectangle(frame, roi, cv::Scalar(255, 0, 0), 2);// Draw border aroud the rect object, this is done so the users can see what they are moving
-      cv::GaussianBlur(frame(roi), frame(roi), cv::Size(51, 51), 0); //creates Gaussian Blur only inside box
-
-      cv::Point cursorPos;
       
-      cv::setMouseCallback(win_name, CallBackFunc, NULL);
+      // Draw border aroud the rect object, this is done so the users can see what they are moving, highlight the rectangle a different colour when dragging os occuring, just to let the user know they are dragging it, only apply the filter when not dragging the rectangle.
+      if(dragging)
+      {
+	cv::rectangle(frame, roi, cv::Scalar(255, 0, 255), 2);
+      }else
+      {
+	cv::rectangle(frame, roi, cv::Scalar(255, 0, 0), 2);
 
+	// Creates GaussianBlur within the R.O.I rectangle
+	cv::GaussianBlur(frame(roi), frame(roi), cv::Size(51, 51), 0);
+      }
+      
       imshow(win_name, frame);
       
       int code = cv::waitKey(1000 / fps); // how long to wait for a key (msecs)
       if (code == 27) // escape. See http://www.asciitable.com/
           break;
       else if (code == 32) { // space bar
-          cv::Mat crop = temp(roi); //crops image to just inside box
+          crop = temp(roi); //crops image to just inside box
           cv::resize(crop, crop, cv::Size(92, 112), cv::INTER_LINEAR); //sca
           cv::cvtColor(crop, crop, cv::COLOR_BGR2GRAY);
           cv::imwrite(std::string("../out")+ ".pgm", crop); //saves file as "out.png"
