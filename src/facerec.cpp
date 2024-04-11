@@ -7,6 +7,8 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <string>
+#include <future>
 
 // Global variable to determine if mouse is dragging
 bool dragging = false;
@@ -67,6 +69,20 @@ void DragRect(int event, int x, int y, int flags, void* userdata)
     }
 }
 
+// Function for prediciting face within the ROI, this will return the label of whatever face it predicts.
+int Predict(cv::Ptr<cv::face::BasicFaceRecognizer>& model, cv::Mat& frame)
+{
+
+  cv::Mat crop = frame(roi); //crops image to just inside box
+  cv::resize(crop, crop, cv::Size(92, 112), cv::INTER_LINEAR);
+  cv::cvtColor(crop, crop, cv::COLOR_BGR2GRAY);
+
+  int predictedLabel = model->predict(crop); //predicts label of face
+
+  return predictedLabel;
+	  
+}
+
 int main(int argc, char *argv[])
 {
   namespace fs = std::filesystem;
@@ -93,9 +109,7 @@ int main(int argc, char *argv[])
 
   //new - this has been taken from 04_capture_show_video.cpp from the open cv lab
   cv::Mat frame;
-  cv::Mat grey_scale;
-  cv::Mat black_white;
-  double fps = 30;
+  double fps = 60;
   const char win_name[] = "Live Video...";
 
   cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
@@ -118,17 +132,24 @@ int main(int argc, char *argv[])
 
   cv::setMouseCallback(win_name, DragRect, &frame);
 
-  cv::Point center(320, 240); //centre of screen
-  cv::Mat temp;
-  cv::Mat crop;
+   cv::Mat temp;
 
   while (true)
   {
       
       vid_in >> frame;
       vid_in >> temp; //temp is used to have unfiltered view
+
+      // Async Function to predict whose face is within the ROI
+      std::future<int> predictedLabel = std::async(std::launch::async, &Predict, std::ref(model), std::ref(temp));
+      cv::putText(frame, std::to_string(predictedLabel.get()), cv::Point(roi.x, roi.y + roi.height + 20),
+		  cv::FONT_HERSHEY_COMPLEX_SMALL, 1.0, cv::Scalar(255, 0, 0), 2);
+     
       
-      // Draw border aroud the rect object, this is done so the users can see what they are moving, highlight the rectangle a different colour when dragging os occuring, just to let the user know they are dragging it, only apply the filter when not dragging the rectangle.
+      /* Draw border aroud the rect object, this is done so the users can see what they are moving, highlight the
+      rectangle a different colour when dragging os occuring, just to let the user know they are dragging it,
+      only apply the filter when not dragging the rectangle.
+      */
       if(dragging)
       {
 	cv::rectangle(frame, roi, cv::Scalar(255, 0, 255), 2);
@@ -141,22 +162,18 @@ int main(int argc, char *argv[])
       }
       
       imshow(win_name, frame);
+
       
       int code = cv::waitKey(1000 / fps); // how long to wait for a key (msecs)
       if (code == 27) // escape. See http://www.asciitable.com/
           break;
-      else if (code == 32) { // space bar
-          crop = temp(roi); //crops image to just inside box
-          cv::resize(crop, crop, cv::Size(92, 112), cv::INTER_LINEAR); //sca
-          cv::cvtColor(crop, crop, cv::COLOR_BGR2GRAY);
-          cv::imwrite(std::string("../out")+ ".pgm", crop); //saves file as "out.png"
-          cv::Mat testSample = cv::imread(std::string("../out") + ".pgm", cv::IMREAD_GRAYSCALE); //reads output image
-          int predictedLabel = model->predict(testSample); //predicts label of face
-          std::cout << "\nPredicted class = " << predictedLabel << '\n';
-      }
+ 
+      
+	
+      
   }
-
   vid_in.release();
 
   return 0;
 }
+
