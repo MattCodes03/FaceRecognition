@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 
   cv::setMouseCallback(win_name, DragRect, &frame);
 
-   cv::Mat temp;
+  cv::Mat temp;
 
   while (true)
   {
@@ -142,7 +142,32 @@ int main(int argc, char *argv[])
 
       // Async Function to predict whose face is within the ROI
       std::future<int> predictedLabel = std::async(std::launch::async, &Predict, std::ref(model), std::ref(temp));
-      cv::putText(frame, std::to_string(predictedLabel.get()), cv::Point(roi.x, roi.y + roi.height + 20),
+      // Text to display under the rectangle based on which face has been detected by the model
+      std::string label;
+      
+      // Check the returned label value to determine if the face detected is a member of this group
+      int value = predictedLabel.get();
+      switch(value)
+      {
+      case 41:
+	label = std::to_string(value) + " - Oscar";
+	break;
+      case 42:
+	label = std::to_string(value) + " - Matthew";
+	break;
+      case 43:
+	label = std::to_string(value) + " - Greer";
+	break;
+      case 44:
+	label = std::to_string(value) + " - Lucas";
+	break;
+      default:
+	label = std::to_string(value) + " - Not a Team Member";
+	break;
+      }
+
+      // Display the label on screen just under the rectangle
+      cv::putText(frame, label, cv::Point(roi.x, roi.y + roi.height + 20),
 		  cv::FONT_HERSHEY_COMPLEX_SMALL, 1.0, cv::Scalar(255, 0, 0), 2);
      
       
