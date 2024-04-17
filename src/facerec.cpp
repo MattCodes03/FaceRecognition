@@ -77,7 +77,9 @@ int Predict(cv::Ptr<cv::face::BasicFaceRecognizer>& model, cv::Mat& frame)
   cv::resize(crop, crop, cv::Size(92, 112), cv::INTER_LINEAR);
   cv::cvtColor(crop, crop, cv::COLOR_BGR2GRAY);
 
-  int predictedLabel = model->predict(crop); //predicts label of face
+  cv::imwrite("out.pgm", crop);
+
+  int predictedLabel = model->predict(crop);
 
   return predictedLabel;
 	  
@@ -109,7 +111,7 @@ int main(int argc, char *argv[])
 
   //new - this has been taken from 04_capture_show_video.cpp from the open cv lab
   cv::Mat frame;
-  double fps = 60;
+  double fps = 30;
   const char win_name[] = "Live Video...";
 
   cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
@@ -132,16 +134,13 @@ int main(int argc, char *argv[])
 
   cv::setMouseCallback(win_name, DragRect, &frame);
 
-  cv::Mat temp;
-
   while (true)
   {
-      
-      vid_in >> frame;
-      vid_in >> temp; //temp is used to have unfiltered view
+
+    vid_in >> frame;
 
       // Async Function to predict whose face is within the ROI
-      std::future<int> predictedLabel = std::async(std::launch::async, &Predict, std::ref(model), std::ref(temp));
+      std::future<int> predictedLabel = std::async(std::launch::async, &Predict, std::ref(model), std::ref(frame));
       // Text to display under the rectangle based on which face has been detected by the model
       std::string label;
       
@@ -150,16 +149,16 @@ int main(int argc, char *argv[])
       switch(value)
       {
       case 41:
-	label = std::to_string(value) + " - Oscar";
+	label = "Oscar";
 	break;
       case 42:
-	label = std::to_string(value) + " - Matthew";
+	label = "Matthew";
 	break;
       case 43:
-	label = std::to_string(value) + " - Greer";
+	label = "Greer";
 	break;
       case 44:
-	label = std::to_string(value) + " - Lucas";
+	label = "Lucas";
 	break;
       default:
 	label = std::to_string(value) + " - Not a Team Member";
@@ -182,7 +181,7 @@ int main(int argc, char *argv[])
       {
 	cv::rectangle(frame, roi, cv::Scalar(255, 0, 0), 2);
 
-	// Creates GaussianBlur within the R.O.I rectangle
+	// Creates GaussianBlur within the ROI rectangle
 	cv::GaussianBlur(frame(roi), frame(roi), cv::Size(51, 51), 0);
       }
       
