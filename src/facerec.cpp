@@ -139,8 +139,26 @@ int main(int argc, char *argv[])
 
     vid_in >> frame;
 
-      // Async Function to predict whose face is within the ROI
-      std::future<int> predictedLabel = std::async(std::launch::async, &Predict, std::ref(model), std::ref(frame));
+    cv::Mat frameUnfiltered = frame.clone();
+     
+      
+      /* Draw border aroud the rect object, this is done so the users can see what they are moving, highlight the
+      rectangle a different colour when dragging os occuring, just to let the user know they are dragging it,
+      only apply the filter when not dragging the rectangle.
+      */
+      if(dragging)
+      {
+	cv::rectangle(frame, roi, cv::Scalar(255, 0, 255), 2);
+      }else
+      {
+	cv::rectangle(frame, roi, cv::Scalar(255, 0, 0), 2);
+
+	// Creates GaussianBlur within the ROI rectangle
+	cv::GaussianBlur(frame(roi), frame(roi), cv::Size(51, 51), 0);
+      }
+
+        // Async Function to predict whose face is within the ROI
+      std::future<int> predictedLabel = std::async(std::launch::async, &Predict, std::ref(model), std::ref(frameUnfiltered));
       // Text to display under the rectangle based on which face has been detected by the model
       std::string label;
       
@@ -168,22 +186,6 @@ int main(int argc, char *argv[])
       // Display the label on screen just under the rectangle
       cv::putText(frame, label, cv::Point(roi.x, roi.y + roi.height + 20),
 		  cv::FONT_HERSHEY_COMPLEX_SMALL, 1.0, cv::Scalar(255, 0, 0), 2);
-     
-      
-      /* Draw border aroud the rect object, this is done so the users can see what they are moving, highlight the
-      rectangle a different colour when dragging os occuring, just to let the user know they are dragging it,
-      only apply the filter when not dragging the rectangle.
-      */
-      if(dragging)
-      {
-	cv::rectangle(frame, roi, cv::Scalar(255, 0, 255), 2);
-      }else
-      {
-	cv::rectangle(frame, roi, cv::Scalar(255, 0, 0), 2);
-
-	// Creates GaussianBlur within the ROI rectangle
-	cv::GaussianBlur(frame(roi), frame(roi), cv::Size(51, 51), 0);
-      }
       
       imshow(win_name, frame);
 
